@@ -1,13 +1,9 @@
 import './App.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { TagsTable } from './components/table/table-tags';
-import {
-   keepPreviousData,
-   useQuery,
-   useQueryClient,
-} from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 const darkTheme = createTheme({
    palette: {
@@ -17,7 +13,6 @@ const darkTheme = createTheme({
 
 function App() {
    const [page, setPage] = useState<number>(1);
-   const queryClient = useQueryClient();
    const fetchURL =
       'https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&page=1&order=desc&sort=popular&site=stackoverflow';
    // https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&site=stackoverflow&filter=total
@@ -28,8 +23,7 @@ function App() {
    const fetchData = async () => {
       const response = await fetch(fetchURL);
       const result = await response.json();
-      console.log(response);
-      console.log('lol');
+      console.log(result);
 
       if (!response.ok) {
          console.error('bad request');
@@ -72,8 +66,8 @@ function App() {
                StackOverflow Tag explorer
             </h1>
             <div>
-               {data.map(el => (
-                  <p>{el.name}</p>
+               {data?.items?.map((el, i) => (
+                  <p key={i}>{el.name}</p>
                ))}
             </div>
             <TagsTable />
