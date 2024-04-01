@@ -1,5 +1,4 @@
-import { useState, useMemo } from 'react';
-import { alpha } from '@mui/material/styles';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -12,59 +11,9 @@ import TableSortLabel from '@mui/material/TableSortLabel';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
-import Checkbox from '@mui/material/Checkbox';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Switch from '@mui/material/Switch';
-import DeleteIcon from '@mui/icons-material/Delete';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import { visuallyHidden } from '@mui/utils';
-
-interface Data {
-   id: number;
-   calories: number;
-   carbs: number;
-   fat: number;
-   name: string;
-   protein: number;
-}
-
-function createData(
-   id: number,
-   name: string,
-   calories: number,
-   fat: number,
-   carbs: number,
-   protein: number
-): Data {
-   return {
-      id,
-      name,
-      calories,
-      fat,
-      carbs,
-      protein,
-   };
-}
-
-const rows = [
-   createData(1, 'Cupcake', 305, 3.7, 67, 4.3),
-   createData(2, 'Donut', 452, 25.0, 51, 4.9),
-   createData(3, 'Eclair', 262, 16.0, 24, 6.0),
-   createData(4, 'Frozen yoghurt', 159, 6.0, 24, 4.0),
-   createData(5, 'Gingerbread', 356, 16.0, 49, 3.9),
-   createData(6, 'Honeycomb', 408, 3.2, 87, 6.5),
-   createData(7, 'Ice cream sandwich', 237, 9.0, 37, 4.3),
-   createData(8, 'Jelly Bean', 375, 0.0, 94, 0.0),
-   createData(9, 'KitKat', 518, 26.0, 65, 7.0),
-   createData(10, 'Lollipop', 392, 0.2, 98, 0.0),
-   createData(11, 'Marshmallow', 318, 0, 81, 2.0),
-   createData(12, 'Nougat', 360, 19.0, 9, 37.0),
-   createData(13, 'Oreo', 437, 18.0, 63, 4.0),
-];
-
-//
+import type { OmitBooleanTagComparator } from '../../../lib/types/tag';
+import { useTagStore } from '../../../store/tagStore';
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
    if (b[orderBy] < a[orderBy]) {
@@ -78,7 +27,7 @@ function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
 
 type Order = 'asc' | 'desc';
 
-function getComparator<Key extends keyof any>(
+function getComparator<Key extends keyof OmitBooleanTagComparator>(
    order: Order,
    orderBy: Key
 ): (
@@ -107,7 +56,7 @@ function stableSort<T>(
 
 interface HeadCell {
    disablePadding: boolean;
-   id: keyof Data;
+   id: keyof OmitBooleanTagComparator;
    label: string;
    numeric: boolean;
 }
@@ -116,75 +65,48 @@ const headCells: readonly HeadCell[] = [
    {
       id: 'name',
       numeric: false,
-      disablePadding: true,
-      label: 'Dessert (100g serving)',
+      disablePadding: false,
+      label: 'Tag name ',
    },
    {
-      id: 'calories',
+      id: 'count',
       numeric: true,
       disablePadding: false,
-      label: 'Calories',
-   },
-   {
-      id: 'fat',
-      numeric: true,
-      disablePadding: false,
-      label: 'Fat (g)',
-   },
-   {
-      id: 'carbs',
-      numeric: true,
-      disablePadding: false,
-      label: 'Carbs (g)',
-   },
-   {
-      id: 'protein',
-      numeric: true,
-      disablePadding: false,
-      label: 'Protein (g)',
+      label: 'Posts count',
    },
 ];
 
 interface EnhancedTableProps {
-   numSelected: number;
    onRequestSort: (
       event: React.MouseEvent<unknown>,
-      property: keyof Data
+      property: keyof OmitBooleanTagComparator
    ) => void;
-   onSelectAllClick: (event: React.ChangeEvent<HTMLInputElement>) => void;
    order: Order;
    orderBy: string;
    rowCount: number;
 }
 
+interface TablePaginationActionsProps {
+   count: number;
+   page: number;
+   rowsPerPage: number;
+   onPageChange: (
+      event: React.MouseEvent<HTMLButtonElement>,
+      newPage: number
+   ) => void;
+}
+
 const EnhancedTableHead = (props: EnhancedTableProps) => {
-   const {
-      onSelectAllClick,
-      order,
-      orderBy,
-      numSelected,
-      rowCount,
-      onRequestSort,
-   } = props;
+   const { order, orderBy, onRequestSort } = props;
    const createSortHandler =
-      (property: keyof Data) => (event: React.MouseEvent<unknown>) => {
+      (property: keyof OmitBooleanTagComparator) =>
+      (event: React.MouseEvent<unknown>) => {
          onRequestSort(event, property);
       };
 
    return (
       <TableHead>
          <TableRow>
-            <TableCell padding="checkbox">
-               <Checkbox
-                  color="primary"
-                  indeterminate={numSelected > 0 && numSelected < rowCount}
-                  checked={rowCount > 0 && numSelected === rowCount}
-                  onChange={onSelectAllClick}
-                  inputProps={{
-                     'aria-label': 'select all desserts',
-                  }}
-               />
-            </TableCell>
             {headCells.map(headCell => (
                <TableCell
                   key={headCell.id}
@@ -213,226 +135,123 @@ const EnhancedTableHead = (props: EnhancedTableProps) => {
    );
 };
 
-interface EnhancedTableToolbarProps {
-   numSelected: number;
-}
-
-const EnhancedTableToolbar = (props: EnhancedTableToolbarProps) => {
-   const { numSelected } = props;
-
+const EnhancedTableToolbar = () => {
    return (
       <Toolbar
          sx={{
             pl: { sm: 2 },
             pr: { xs: 1, sm: 1 },
-            ...(numSelected > 0 && {
-               bgcolor: theme =>
-                  alpha(
-                     theme.palette.primary.main,
-                     theme.palette.action.activatedOpacity
-                  ),
-            }),
          }}
       >
-         {numSelected > 0 ? (
-            <Typography
-               sx={{ flex: '1 1 100%' }}
-               color="inherit"
-               variant="subtitle1"
-               component="div"
-            >
-               {numSelected} selected
-            </Typography>
-         ) : (
-            <Typography
-               sx={{ flex: '1 1 100%' }}
-               variant="h6"
-               id="tableTitle"
-               component="div"
-            >
-               Nutrition
-            </Typography>
-         )}
-         {numSelected > 0 ? (
-            <Tooltip title="Delete">
-               <IconButton>
-                  <DeleteIcon />
-               </IconButton>
-            </Tooltip>
-         ) : (
-            <Tooltip title="Filter list">
-               <IconButton>
-                  <FilterListIcon />
-               </IconButton>
-            </Tooltip>
-         )}
+         <Typography
+            sx={{ flex: '1 1 100%' }}
+            variant="h6"
+            id="tableTitle"
+            component="div"
+         >
+            Tags
+         </Typography>
       </Toolbar>
    );
 };
 
 export const TagsTable = () => {
+   const tags = useTagStore(state => state.tags);
+   const page = useTagStore(state => state.page);
+   const setPage = useTagStore(state => state.setPage);
+   const resultsPerPage = useTagStore(state => state.resultsPerPage);
    const [order, setOrder] = useState<Order>('asc');
-   const [orderBy, setOrderBy] = useState<keyof Data>('calories');
-   const [selected, setSelected] = useState<readonly number[]>([]);
-   const [page, setPage] = useState(0);
-   const [dense, setDense] = useState(false);
-   const [rowsPerPage, setRowsPerPage] = useState(5);
+   const [orderBy, setOrderBy] =
+      useState<keyof OmitBooleanTagComparator>('name');
 
    const handleRequestSort = (
       event: React.MouseEvent<unknown>,
-      property: keyof Data
+      property: keyof OmitBooleanTagComparator
    ) => {
       const isAsc = orderBy === property && order === 'asc';
       setOrder(isAsc ? 'desc' : 'asc');
       setOrderBy(property);
    };
 
-   const handleSelectAllClick = (
-      event: React.ChangeEvent<HTMLInputElement>
+   const handleChangePage = (
+      event: React.MouseEvent | null,
+      newPage: number
    ) => {
-      if (event.target.checked) {
-         const newSelected = rows.map(n => n.id);
-         setSelected(newSelected);
-         return;
-      }
-      setSelected([]);
+      setPage(newPage + 1);
+
+      console.log(newPage);
    };
 
-   const handleClick = (event: React.MouseEvent<unknown>, id: number) => {
-      const selectedIndex = selected.indexOf(id);
-      let newSelected: readonly number[] = [];
-
-      if (selectedIndex === -1) {
-         newSelected = newSelected.concat(selected, id);
-      } else if (selectedIndex === 0) {
-         newSelected = newSelected.concat(selected.slice(1));
-      } else if (selectedIndex === selected.length - 1) {
-         newSelected = newSelected.concat(selected.slice(0, -1));
-      } else if (selectedIndex > 0) {
-         newSelected = newSelected.concat(
-            selected.slice(0, selectedIndex),
-            selected.slice(selectedIndex + 1)
-         );
-      }
-      setSelected(newSelected);
-   };
-
-   const handleChangePage = (event: unknown, newPage: number) => {
-      setPage(newPage);
-   };
-
-   const handleChangeRowsPerPage = (
-      event: React.ChangeEvent<HTMLInputElement>
-   ) => {
-      setRowsPerPage(parseInt(event.target.value, 10));
-      setPage(0);
-   };
-
-   const handleChangeDense = (event: React.ChangeEvent<HTMLInputElement>) => {
-      setDense(event.target.checked);
-   };
-
-   const isSelected = (id: number) => selected.indexOf(id) !== -1;
+   // const handleChangeRowsPerPage = (
+   //    event: React.ChangeEvent<HTMLInputElement>
+   // ) => {
+   //    setPage(1);
+   // };
 
    // Avoid a layout jump when reaching the last page with empty rows.
-   const emptyRows =
-      page > 0 ? Math.max(0, (1 + page) * rowsPerPage - rows.length) : 0;
 
-   const visibleRows = useMemo(
-      () =>
-         stableSort(rows, getComparator(order, orderBy)).slice(
-            page * rowsPerPage,
-            page * rowsPerPage + rowsPerPage
-         ),
-      [order, orderBy, page, rowsPerPage]
-   );
+   const sortedRows = stableSort(tags, getComparator(order, orderBy));
 
    return (
       <Box sx={{ width: '100%' }}>
          <Paper sx={{ width: '100%', mb: 2 }}>
-            <EnhancedTableToolbar numSelected={selected.length} />
-            <TableContainer>
+            <EnhancedTableToolbar />
+            <TableContainer sx={{ maxHeight: 600 }}>
                <Table
                   sx={{ minWidth: 750 }}
                   aria-labelledby="tableTitle"
-                  size={dense ? 'small' : 'medium'}
+                  size={'medium'}
+                  stickyHeader
                >
                   <EnhancedTableHead
-                     numSelected={selected.length}
                      order={order}
                      orderBy={orderBy}
-                     onSelectAllClick={handleSelectAllClick}
                      onRequestSort={handleRequestSort}
-                     rowCount={rows.length}
+                     rowCount={tags.length}
                   />
                   <TableBody>
-                     {visibleRows.map((row, index) => {
-                        const isItemSelected = isSelected(row.id);
-                        const labelId = `enhanced-table-checkbox-${index}`;
+                     {sortedRows?.map((row, index) => {
+                        const labelId = `tag-${index}`;
 
                         return (
                            <TableRow
                               hover
-                              onClick={event => handleClick(event, row.id)}
                               role="checkbox"
-                              aria-checked={isItemSelected}
                               tabIndex={-1}
-                              key={row.id}
-                              selected={isItemSelected}
-                              sx={{ cursor: 'pointer' }}
+                              key={index}
+                              sx={{
+                                 cursor: 'pointer',
+                                 width: '100%',
+                              }}
                            >
-                              <TableCell padding="checkbox">
-                                 <Checkbox
-                                    color="primary"
-                                    checked={isItemSelected}
-                                    inputProps={{
-                                       'aria-labelledby': labelId,
-                                    }}
-                                 />
-                              </TableCell>
                               <TableCell
                                  component="th"
                                  id={labelId}
                                  scope="row"
                                  padding="none"
+                                 sx={{
+                                    pl: '1rem',
+                                 }}
                               >
                                  {row.name}
                               </TableCell>
-                              <TableCell align="right">
-                                 {row.calories}
-                              </TableCell>
-                              <TableCell align="right">{row.fat}</TableCell>
-                              <TableCell align="right">{row.carbs}</TableCell>
-                              <TableCell align="right">{row.protein}</TableCell>
+                              <TableCell align="right">{row.count}</TableCell>
                            </TableRow>
                         );
                      })}
-                     {emptyRows > 0 && (
-                        <TableRow
-                           style={{
-                              height: (dense ? 33 : 53) * emptyRows,
-                           }}
-                        >
-                           <TableCell colSpan={6} />
-                        </TableRow>
-                     )}
                   </TableBody>
                </Table>
             </TableContainer>
             <TablePagination
-               rowsPerPageOptions={[5, 10, 25]}
+               rowsPerPageOptions={[30, 50]}
                component="div"
-               count={rows.length}
-               rowsPerPage={rowsPerPage}
-               page={page}
+               count={-1}
+               rowsPerPage={resultsPerPage}
+               page={page - 1}
                onPageChange={handleChangePage}
-               onRowsPerPageChange={handleChangeRowsPerPage}
+               // onRowsPerPageChange={handleChangeRowsPerPage}
             />
          </Paper>
-         <FormControlLabel
-            control={<Switch checked={dense} onChange={handleChangeDense} />}
-            label="Dense padding"
-         />
       </Box>
    );
 };
