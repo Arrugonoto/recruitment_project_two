@@ -1,9 +1,11 @@
 import './App.css';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { TagsTable } from './components/table/table-tags';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useTagStore } from './store/tagStore';
+import { useFetch } from './lib/hooks/useFetch';
 
 const darkTheme = createTheme({
    palette: {
@@ -12,33 +14,34 @@ const darkTheme = createTheme({
 });
 
 function App() {
-   const [page, setPage] = useState<number>(1);
-   const fetchURL =
-      'https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&page=1&order=desc&sort=popular&site=stackoverflow';
+   const { handleFetch } = useFetch();
+   const page = useTagStore(state => state.page);
+   const setTags = useTagStore(state => state.setTags);
+   const fetchURL = `https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&page=${page}&order=desc&sort=popular&site=stackoverflow`;
    // https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&site=stackoverflow&filter=total
-   // returns total number of pages
+   // returns total number of results
    // 30 results per page as default
-   // so getting proper request was little tricky because I think the docs are little chaotic
 
-   const fetchData = async () => {
-      const response = await fetch(fetchURL);
-      const result = await response.json();
-      console.log(result);
+   // const { isPending, isError, error, data, isFetching, isPlaceholderData } =
+   //    useQuery({
+   //       queryKey: ['tagsData', page],
+   //       queryFn: () => handleFetch({ url: fetchURL }),
+   //       placeholderData: keepPreviousData,
+   //       refetchOnWindowFocus: false,
+   //    });
 
-      if (!response.ok) {
-         console.error('bad request');
-         throw new Error(`Could not fetch source.`);
+   const { data } = useQuery({
+      queryKey: ['tagsData', page],
+      queryFn: () => handleFetch({ url: fetchURL }),
+      placeholderData: keepPreviousData,
+      refetchOnWindowFocus: false,
+   });
+
+   useEffect(() => {
+      if (data) {
+         setTags(data.items);
       }
-
-      return result;
-   };
-
-   const { isPending, isError, error, data, isFetching, isPlaceholderData } =
-      useQuery({
-         queryKey: ['badgesData', page],
-         queryFn: () => fetchData(),
-         placeholderData: keepPreviousData,
-      });
+   }, [data, setTags]);
 
    return (
       <ThemeProvider theme={darkTheme}>
@@ -65,11 +68,6 @@ function App() {
             >
                StackOverflow Tag explorer
             </h1>
-            <div>
-               {data?.items?.map((el, i) => (
-                  <p key={i}>{el.name}</p>
-               ))}
-            </div>
             <TagsTable />
          </main>
       </ThemeProvider>
