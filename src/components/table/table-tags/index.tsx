@@ -86,16 +86,6 @@ interface EnhancedTableProps {
    rowCount: number;
 }
 
-interface TablePaginationActionsProps {
-   count: number;
-   page: number;
-   rowsPerPage: number;
-   onPageChange: (
-      event: React.MouseEvent<HTMLButtonElement>,
-      newPage: number
-   ) => void;
-}
-
 const EnhancedTableHead = (props: EnhancedTableProps) => {
    const { order, orderBy, onRequestSort } = props;
    const createSortHandler =

@@ -16,7 +16,7 @@ export type TagCollectives = {
    slug: string;
 };
 
-export type OmiTBooleanTagComparator = Omit<
+export type OmitBooleanTagComparator = Omit<
    Tag,
    'has_synonyms' | 'is_moderator_only' | 'is_required' | 'collectives'
 >;
