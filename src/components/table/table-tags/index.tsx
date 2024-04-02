@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -11,8 +11,11 @@ import TableSortLabel from '@mui/material/TableSortLabel';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
+import Chip from '@mui/material/Chip';
+import TextField from '@mui/material/TextField';
 import { visuallyHidden } from '@mui/utils';
 import type { OmitBooleanTagComparator } from '../../../lib/types/tag';
+import { useFetch } from '../../../lib/hooks/useFetch';
 import { useTagStore } from '../../../store/tagStore';
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
@@ -125,7 +128,15 @@ const EnhancedTableHead = (props: EnhancedTableProps) => {
    );
 };
 
-const EnhancedTableToolbar = () => {
+const EnhancedTableToolbar = ({
+   resultsPerPage,
+   setResultsPerPage,
+   setPage,
+}: {
+   resultsPerPage: number;
+   setResultsPerPage: (resultsPerPage: number) => void;
+   setPage: (page: number) => void;
+}) => {
    return (
       <Toolbar
          sx={{
@@ -134,12 +145,33 @@ const EnhancedTableToolbar = () => {
          }}
       >
          <Typography
-            sx={{ flex: '1 1 100%' }}
+            sx={{ flex: '1 1 100%', textAlign: 'left' }}
             variant="h6"
             id="tableTitle"
             component="div"
          >
             Tags
+         </Typography>
+         <Typography sx={{ display: 'flex', textWrap: 'nowrap' }}>
+            Results per page
+            <TextField
+               hiddenLabel
+               id="input-results"
+               variant="filled"
+               type="number"
+               size="small"
+               value={resultsPerPage}
+               inputProps={{
+                  min: 1,
+                  max: 100,
+               }}
+               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const numericValue = parseInt(e.target.value, 10);
+                  setResultsPerPage(numericValue);
+                  setPage(1);
+                  console.log(resultsPerPage);
+               }}
+            />
          </Typography>
       </Toolbar>
    );
@@ -150,9 +182,16 @@ export const TagsTable = () => {
    const page = useTagStore(state => state.page);
    const setPage = useTagStore(state => state.setPage);
    const resultsPerPage = useTagStore(state => state.resultsPerPage);
+   const setResultsPerPage = useTagStore(state => state.setResultsPerPage);
+   const setTotalResults = useTagStore(state => state.setTotalResults);
+   const totalResults = useTagStore(state => state.totalResults);
    const [order, setOrder] = useState<Order>('asc');
    const [orderBy, setOrderBy] =
       useState<keyof OmitBooleanTagComparator>('name');
+   const totalURL =
+      'https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&site=stackoverflow&filter=total';
+   const queryKey = ['totalResults'];
+   const { data } = useFetch({ url: totalURL, queryKey });
 
    const handleRequestSort = (
       event: React.MouseEvent<unknown>,
@@ -172,20 +211,21 @@ export const TagsTable = () => {
       console.log(newPage);
    };
 
-   // const handleChangeRowsPerPage = (
-   //    event: React.ChangeEvent<HTMLInputElement>
-   // ) => {
-   //    setPage(1);
-   // };
-
-   // Avoid a layout jump when reaching the last page with empty rows.
-
    const sortedRows = stableSort(tags, getComparator(order, orderBy));
+
+   useEffect(() => {
+      if (data) setTotalResults(data.total);
+      // eslint-disable-next-line
+   }, []);
 
    return (
       <Box sx={{ width: '100%' }}>
          <Paper sx={{ width: '100%', mb: 2 }}>
-            <EnhancedTableToolbar />
+            <EnhancedTableToolbar
+               resultsPerPage={resultsPerPage}
+               setResultsPerPage={setResultsPerPage}
+               setPage={setPage}
+            />
             <TableContainer sx={{ maxHeight: 600 }}>
                <Table
                   sx={{ minWidth: 750 }}
@@ -223,7 +263,7 @@ export const TagsTable = () => {
                                     pl: '1rem',
                                  }}
                               >
-                                 {row.name}
+                                 <Chip label={row.name} />
                               </TableCell>
                               <TableCell align="right">{row.count}</TableCell>
                            </TableRow>
@@ -233,13 +273,14 @@ export const TagsTable = () => {
                </Table>
             </TableContainer>
             <TablePagination
-               rowsPerPageOptions={[30, 50]}
+               rowsPerPageOptions={[]}
                component="div"
-               count={-1}
+               count={totalResults}
                rowsPerPage={resultsPerPage}
                page={page - 1}
                onPageChange={handleChangePage}
-               // onRowsPerPageChange={handleChangeRowsPerPage}
+               showFirstButton
+               showLastButton
             />
          </Paper>
       </Box>
