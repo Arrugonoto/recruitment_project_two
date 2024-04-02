@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { TagsTable } from './components/table/table-tags';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTagStore } from './store/tagStore';
 import { useFetch } from './lib/hooks/useFetch';
 
@@ -14,34 +13,22 @@ const darkTheme = createTheme({
 });
 
 function App() {
-   const { handleFetch } = useFetch();
    const page = useTagStore(state => state.page);
+   const resultsPerPage = useTagStore(state => state.resultsPerPage);
    const setTags = useTagStore(state => state.setTags);
-   const fetchURL = `https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&page=${page}&order=desc&sort=popular&site=stackoverflow`;
+   const fetchURL = `https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&page=${page}&pagesize=${resultsPerPage}&order=desc&sort=popular&site=stackoverflow`;
    // https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&site=stackoverflow&filter=total
    // returns total number of results
    // 30 results per page as default
 
-   // const { isPending, isError, error, data, isFetching, isPlaceholderData } =
-   //    useQuery({
-   //       queryKey: ['tagsData', page],
-   //       queryFn: () => handleFetch({ url: fetchURL }),
-   //       placeholderData: keepPreviousData,
-   //       refetchOnWindowFocus: false,
-   //    });
-
-   const { data } = useQuery({
-      queryKey: ['tagsData', page],
-      queryFn: () => handleFetch({ url: fetchURL }),
-      placeholderData: keepPreviousData,
-      refetchOnWindowFocus: false,
-   });
+   const queryKey = ['tagsData', page, resultsPerPage];
+   const { data } = useFetch({ url: fetchURL, queryKey });
 
    useEffect(() => {
       if (data) {
          setTags(data.items);
       }
-   }, [data, setTags]);
+   }, [page, data, setTags]);
 
    return (
       <ThemeProvider theme={darkTheme}>
