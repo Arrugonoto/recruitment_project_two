@@ -5,6 +5,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { TagsTable } from './components/table/table-tags';
 import { useTagStore } from './store/tagStore';
 import { useFetch } from './lib/hooks/useFetch';
+import { BASE_URL } from './lib/constants/endpoints';
+import Container from '@mui/material/Container';
 
 const darkTheme = createTheme({
    palette: {
@@ -14,21 +16,22 @@ const darkTheme = createTheme({
 
 function App() {
    const page = useTagStore(state => state.page);
+   const setPage = useTagStore(state => state.setPage);
    const resultsPerPage = useTagStore(state => state.resultsPerPage);
    const setTags = useTagStore(state => state.setTags);
-   const fetchURL = `https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&page=${page}&pagesize=${resultsPerPage}&order=desc&sort=popular&site=stackoverflow`;
-   // https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&site=stackoverflow&filter=total
-   // returns total number of results
-   // 30 results per page as default
+   const fetchURL = `${BASE_URL}((&page=${page}&pagesize=${resultsPerPage}&order=desc&sort=popular&site=stackoverflow`;
 
    const queryKey = ['tagsData', page, resultsPerPage];
-   const { data } = useFetch({ url: fetchURL, queryKey });
+   const { data, isFetching, isError, isPending } = useFetch({
+      url: fetchURL,
+      queryKey,
+   });
 
    useEffect(() => {
       if (data) {
          setTags(data.items);
       }
-   }, [page, data, setTags]);
+   }, [page, setPage, data, setTags]);
 
    return (
       <ThemeProvider theme={darkTheme}>
@@ -55,7 +58,13 @@ function App() {
             >
                StackOverflow Tag explorer
             </h1>
-            <TagsTable />
+            <Container>
+               <TagsTable
+                  isFetching={isFetching}
+                  isError={isError}
+                  isPending={isPending}
+               />
+            </Container>
          </main>
       </ThemeProvider>
    );
