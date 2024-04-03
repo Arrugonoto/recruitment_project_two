@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 interface FetchTypes {
    url: Parameters<typeof fetch>[0];
    options?: Parameters<typeof fetch>[1];
+   signal: AbortSignal;
 }
 
 interface FetchProps<T> {
@@ -10,8 +11,11 @@ interface FetchProps<T> {
 }
 
 export const useFetch = <T,>({ url, queryKey }: FetchProps<T>) => {
-   const handleFetch = async ({ url, options }: FetchTypes) => {
-      const response = await fetch(url, options);
+   const controller = new AbortController();
+   const signal = controller.signal;
+
+   const handleFetch = async ({ url, options, signal }: FetchTypes) => {
+      const response = await fetch(url, { ...options, signal });
       const result = await response.json();
 
       if (!response.ok) {
@@ -25,10 +29,11 @@ export const useFetch = <T,>({ url, queryKey }: FetchProps<T>) => {
    const { isPending, isError, error, data, isFetching, isPlaceholderData } =
       useQuery({
          queryKey: queryKey,
-         queryFn: () => handleFetch({ url: url }),
+         queryFn: () => handleFetch({ url: url, signal }),
          placeholderData: keepPreviousData,
          refetchOnWindowFocus: false,
       });
 
+   if (isError) console.error(error);
    return { isPending, isError, error, data, isFetching, isPlaceholderData };
 };
