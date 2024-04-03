@@ -17,6 +17,11 @@ import { visuallyHidden } from '@mui/utils';
 import type { OmitBooleanTagComparator } from '../../../lib/types/tag';
 import { useFetch } from '../../../lib/hooks/useFetch';
 import { useTagStore } from '../../../store/tagStore';
+import Skeleton from '@mui/material/Skeleton';
+import { BASE_URL } from '../../../lib/constants/endpoints';
+import Tooltip from '@mui/material/Tooltip';
+import HelpIcon from '@mui/icons-material/Help';
+import IconButton from '@mui/material/IconButton';
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
    if (b[orderBy] < a[orderBy]) {
@@ -137,6 +142,20 @@ const EnhancedTableToolbar = ({
    setResultsPerPage: (resultsPerPage: number) => void;
    setPage: (page: number) => void;
 }) => {
+   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const numericValue = parseInt(e.target.value, 10);
+
+      if (!e.target.value || numericValue < 0) {
+         setResultsPerPage(1);
+      } else if (numericValue > 100) {
+         setResultsPerPage(100);
+      } else {
+         setResultsPerPage(numericValue);
+      }
+
+      setPage(1);
+   };
+
    return (
       <Toolbar
          sx={{
@@ -152,8 +171,16 @@ const EnhancedTableToolbar = ({
          >
             Tags
          </Typography>
-         <Typography sx={{ display: 'flex', textWrap: 'nowrap' }}>
-            Results per page
+         <Typography
+            sx={{
+               display: 'flex',
+               flexWrap: 'nowrap',
+               gap: '0.5rem',
+               alignItems: 'center',
+            }}
+            component="div"
+         >
+            <p style={{ whiteSpace: 'nowrap' }}>Results per page</p>
             <TextField
                hiddenLabel
                id="input-results"
@@ -165,19 +192,30 @@ const EnhancedTableToolbar = ({
                   min: 1,
                   max: 100,
                }}
-               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const numericValue = parseInt(e.target.value, 10);
-                  setResultsPerPage(numericValue);
-                  setPage(1);
-                  console.log(resultsPerPage);
-               }}
+               sx={{ width: 80 }}
+               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleChange(e)
+               }
             />
+            <Tooltip title="Correct value between 1 - 100" placement="bottom">
+               <IconButton color="info">
+                  <HelpIcon></HelpIcon>
+               </IconButton>
+            </Tooltip>
          </Typography>
       </Toolbar>
    );
 };
 
-export const TagsTable = () => {
+export const TagsTable = ({
+   isFetching,
+   isError,
+   isPending,
+}: {
+   isFetching: boolean;
+   isError: boolean;
+   isPending: boolean;
+}) => {
    const tags = useTagStore(state => state.tags);
    const page = useTagStore(state => state.page);
    const setPage = useTagStore(state => state.setPage);
@@ -188,8 +226,7 @@ export const TagsTable = () => {
    const [order, setOrder] = useState<Order>('asc');
    const [orderBy, setOrderBy] =
       useState<keyof OmitBooleanTagComparator>('name');
-   const totalURL =
-      'https://api.stackexchange.com/2.3/tags?key=ZTvR*eaD5TgmFUlZvLPM6g((&site=stackoverflow&filter=total';
+   const totalURL = `${BASE_URL}((&site=stackoverflow&filter=total`;
    const queryKey = ['totalResults'];
    const { data } = useFetch({ url: totalURL, queryKey });
 
@@ -207,8 +244,6 @@ export const TagsTable = () => {
       newPage: number
    ) => {
       setPage(newPage + 1);
-
-      console.log(newPage);
    };
 
    const sortedRows = stableSort(tags, getComparator(order, orderBy));
@@ -216,7 +251,7 @@ export const TagsTable = () => {
    useEffect(() => {
       if (data) setTotalResults(data.total);
       // eslint-disable-next-line
-   }, []);
+   }, [data, resultsPerPage]);
 
    return (
       <Box sx={{ width: '100%' }}>
@@ -240,10 +275,8 @@ export const TagsTable = () => {
                      rowCount={tags.length}
                   />
                   <TableBody>
-                     {sortedRows?.map((row, index) => {
-                        const labelId = `tag-${index}`;
-
-                        return (
+                     {(isFetching || isPending) &&
+                        Array.from({ length: 14 }).map((_, index) => (
                            <TableRow
                               hover
                               role="checkbox"
@@ -256,19 +289,74 @@ export const TagsTable = () => {
                            >
                               <TableCell
                                  component="th"
-                                 id={labelId}
                                  scope="row"
                                  padding="none"
+                                 colSpan={2}
                                  sx={{
                                     pl: '1rem',
+                                    w: '100%',
                                  }}
                               >
-                                 <Chip label={row.name} />
+                                 <Skeleton height={40} />
                               </TableCell>
-                              <TableCell align="right">{row.count}</TableCell>
                            </TableRow>
-                        );
-                     })}
+                        ))}
+                     {!isFetching && !isPending && isError && (
+                        <TableRow>
+                           <TableCell colSpan={2} sx={{ height: '100%' }}>
+                              <Box
+                                 sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    width: '100%',
+                                    textAlign: 'center',
+                                    gap: '0.8rem',
+                                    py: '1rem',
+                                 }}
+                              >
+                                 <h2>Couldn't load data.</h2>
+                                 <p>
+                                    Check network connection and refresh page.
+                                    If it doesn't help try again later.
+                                 </p>
+                              </Box>
+                           </TableCell>
+                        </TableRow>
+                     )}
+                     {!isFetching &&
+                        !isPending &&
+                        !isError &&
+                        sortedRows?.map((row, index) => {
+                           const labelId = `tag-${index}`;
+
+                           return (
+                              <TableRow
+                                 hover
+                                 role="checkbox"
+                                 tabIndex={-1}
+                                 key={index}
+                                 sx={{
+                                    cursor: 'pointer',
+                                    width: '100%',
+                                 }}
+                              >
+                                 <TableCell
+                                    component="th"
+                                    id={labelId}
+                                    scope="row"
+                                    padding="none"
+                                    sx={{
+                                       pl: '1rem',
+                                    }}
+                                 >
+                                    <Chip label={row.name} />
+                                 </TableCell>
+                                 <TableCell align="right">
+                                    {row.count}
+                                 </TableCell>
+                              </TableRow>
+                           );
+                        })}
                   </TableBody>
                </Table>
             </TableContainer>
