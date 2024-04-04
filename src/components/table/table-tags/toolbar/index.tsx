@@ -69,7 +69,7 @@ export const EnhancedTableToolbar = ({
                   handleChange(e)
                }
             />
-            <Tooltip title="Accepts value between 1 - 100" placement="bottom">
+            <Tooltip title="Accepts values between 1 - 100" placement="bottom">
                <IconButton color="info">
                   <HelpIcon></HelpIcon>
                </IconButton>
